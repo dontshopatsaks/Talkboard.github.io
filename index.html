@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TalkBoard — Communication for Everyone</title>
+    <style>
+        :root {
+            --primary: #4A90D9;
+            --bg: #F5F7FA;
+            --card-radius: 20px;
+            --shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Header ── */
+        header {
+            background: white;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo { font-size: 1.5rem; font-weight: 800; color: var(--primary); }
+        .logo span { color: #333; }
+
+        .mode-toggle { display: flex; background: #eee; border-radius: 30px; padding: 4px; gap: 4px; }
+        .mode-btn {
+            padding: 8px 16px;
+            border: none; border-radius: 26px; cursor: pointer;
+            font-size: 0.85rem; font-weight: 700;
+            background: transparent; color: #666;
+            transition: all 0.2s;
+        }
+        .mode-btn.active { background: var(--primary); color: white; }
+
+        .child-mode header { background: #FFF9E6; }
+        .child-mode .logo { color: #E65100; }
+
+        .child-banner {
+            display: none;
+            background: linear-gradient(90deg, #FF9800, #FFB300);
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+        .child-mode .child-banner { display: block; }
+
+        /* ── Search ── */
+        .search-bar { padding: 12px 16px; background: white; border-top: 1px solid #eee; }
+        .search-input {
+            width: 100%; padding: 10px 16px;
+            border: 2px solid #e0e0e0; border-radius: 30px;
+            font-size: 1rem; outline: none; transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: var(--primary); }
+
+        /* ── Category Tabs ── */
+        .categories {
+            display: flex; gap: 8px; padding: 12px 16px;
+            overflow-x: auto; scrollbar-width: none;
+            background: white; border-bottom: 2px solid #f0f0f0;
+        }
+        .categories::-webkit-scrollbar { display: none; }
+        .cat-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border: 2px solid transparent;
+            border-radius: 30px; cursor: pointer;
+            font-size: 0.9rem; font-weight: 700;
+            white-space: nowrap; transition: all 0.2s;
+            background: #f5f5f5; color: #555;
+        }
+        .cat-btn.active { color: white; }
+
+        /* ── Sub-category Bar ── */
+        .subcategories {
+            display: none;
+            gap: 6px;
+            padding: 8px 16px 10px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            background: #E0F7FA;
+            border-bottom: 2px solid #b2ebf2;
+        }
+        .subcategories.visible { display: flex; }
+        .subcategories::-webkit-scrollbar { display: none; }
+        .subcat-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 6px 14px;
+            border: 2px solid transparent;
+            border-radius: 20px; cursor: pointer;
+            font-size: 0.82rem; font-weight: 700;
+            white-space: nowrap; transition: all 0.2s;
+            background: rgba(255,255,255,0.75); color: #00838f;
+        }
+        .subcat-btn.active { color: white; }
+        .subcat-btn:hover:not(.active) { background: rgba(255,255,255,0.95); }
+
+        /* ── Card Grid ── */
+        .grid-container { padding: 16px; }
+        .category-title { font-size: 1.1rem; font-weight: 700; color: #444; margin-bottom: 12px; padding-left: 4px; }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 14px;
+        }
+
+        .card {
+            background: white;
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 20px 12px 16px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            border: 3px solid transparent;
+            position: relative;
+            min-height: 145px;
+            user-select: none;
+        }
+        .card:active { transform: scale(0.93); }
+        .card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+
+        .card-emoji { font-size: 3.2rem; line-height: 1; margin-bottom: 10px; }
+        .dual-emoji { font-size: 1.8rem !important; display: flex; align-items: center; gap: 4px; margin-bottom: 10px; }
+        .dual-sep { font-size: 0.9rem; color: #bbb; font-weight: 700; }
+        .card-img { width: 72px; height: 72px; object-fit: cover; border-radius: 12px; margin-bottom: 10px; }
+        .card-label { font-size: 0.95rem; font-weight: 700; text-align: center; color: #333; line-height: 1.3; }
+        .card-label-ar { font-size: 0.75rem; font-weight: 600; text-align: center; color: #888; margin-top: 3px; direction: rtl; font-family: 'Segoe UI', Arial, sans-serif; }
+
+        .child-mode .card { min-height: 170px; }
+        .child-mode .card-emoji { font-size: 4.2rem; }
+        .child-mode .dual-emoji { font-size: 2.2rem !important; }
+        .child-mode .card-img { width: 88px; height: 88px; }
+        .child-mode .card-label { font-size: 1.15rem; }
+
+        .card.add-card { background: #f0f7ff; border: 3px dashed var(--primary); }
+        .add-card-icon { font-size: 2.5rem; margin-bottom: 8px; color: var(--primary); }
+        .add-card-label { font-size: 0.9rem; font-weight: 700; color: var(--primary); }
+
+        .delete-btn {
+            position: absolute; top: 6px; right: 8px;
+            font-size: 1.1rem; color: #bbb; cursor: pointer;
+            line-height: 1; padding: 4px;
+            border-radius: 50%; transition: color 0.2s, background 0.2s;
+        }
+        .delete-btn:hover { color: #e53935; background: #ffeaea; }
+
+        .edit-btn {
+            position: absolute; top: 6px; left: 8px;
+            font-size: 1rem; color: #bbb; cursor: pointer;
+            line-height: 1; padding: 4px;
+            border-radius: 50%; transition: color 0.2s, background 0.2s;
+        }
+        .edit-btn:hover { color: #1976D2; background: #e3f2fd; }
+
+        /* ── Fullscreen Overlay ── */
+        .fullscreen {
+            display: none;
+            position: fixed; inset: 0; z-index: 1000;
+            flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer;
+            animation: zoomIn 0.22s ease;
+        }
+        .fullscreen.visible { display: flex; }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.88); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        .fs-emoji {
+            font-size: min(42vw, 260px);
+            line-height: 1;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 8px 24px rgba(0,0,0,0.2));
+        }
+        .fs-dual {
+            display: flex; align-items: center; gap: 16px;
+            margin-bottom: 20px;
+        }
+        .fs-dual .fs-emoji { font-size: min(22vw, 140px); margin-bottom: 0; }
+        .fs-dual-sep { font-size: min(8vw, 48px); color: rgba(255,255,255,0.6); font-weight: 900; }
+        .fs-img {
+            max-width: 68vw; max-height: 52vh;
+            object-fit: contain; border-radius: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        }
+        .fs-label {
+            font-size: clamp(2.2rem, 9vw, 5.5rem);
+            font-weight: 900; color: white;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.35);
+            text-align: center; padding: 0 24px;
+            line-height: 1.2;
+        }
+        .fs-label-ar {
+            font-size: clamp(1.3rem, 4.5vw, 2.8rem);
+            font-weight: 700; color: rgba(255,255,255,0.82);
+            text-shadow: 0 2px 12px rgba(0,0,0,0.25);
+            text-align: center; padding: 4px 24px 0;
+            direction: rtl;
+        }
+        .fs-speak-btn {
+            margin-top: 28px;
+            background: rgba(255,255,255,0.25);
+            border: 3px solid rgba(255,255,255,0.65);
+            color: white; border-radius: 50px;
+            padding: 14px 36px; font-size: 1.25rem; font-weight: 800;
+            cursor: pointer; transition: background 0.2s;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .fs-speak-btn:hover { background: rgba(255,255,255,0.4); }
+        .fs-hint {
+            position: absolute; bottom: 28px;
+            font-size: 0.95rem; color: rgba(255,255,255,0.65); font-weight: 600;
+        }
+
+        /* ── Add Card Modal ── */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.52); z-index: 2000;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .modal-overlay.visible { display: flex; }
+        .modal {
+            background: white; border-radius: 24px; padding: 28px;
+            width: 100%; max-width: 440px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .modal h2 { font-size: 1.4rem; margin-bottom: 20px; color: #333; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.9rem; font-weight: 700; margin-bottom: 6px; color: #555; }
+        .form-group input,
+        .form-group select {
+            width: 100%; padding: 12px 16px;
+            border: 2px solid #e0e0e0; border-radius: 12px;
+            font-size: 1rem; outline: none; transition: border-color 0.2s;
+        }
+        .form-group input:focus,
+        .form-group select:focus { border-color: var(--primary); }
+        .input-error { border-color: #e53935 !important; }
+
+        .upload-area {
+            border: 2px dashed #ccc; border-radius: 12px;
+            padding: 20px; text-align: center; cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+        }
+        .upload-area:hover { border-color: var(--primary); background: #f0f7ff; }
+        .upload-area input { display: none; }
+        .preview-img { max-width: 100%; max-height: 140px; border-radius: 12px; margin-top: 12px; object-fit: contain; }
+
+        .modal-btns { display: flex; gap: 12px; margin-top: 20px; }
+        .btn {
+            flex: 1; padding: 14px; border: none; border-radius: 12px;
+            font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.86; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: #eee; color: #555; }
+
+        /* ── Empty state ── */
+        .empty-state { text-align: center; padding: 60px 20px; color: #aaa; grid-column: 1/-1; }
+        .empty-state .icon { font-size: 4rem; margin-bottom: 12px; }
+
+        /* ── Batch Import ── */
+        .batch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 10px;
+            max-height: 42vh;
+            overflow-y: auto;
+            margin: 10px 0 4px;
+            padding-right: 4px;
+        }
+        .batch-item {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+        }
+        .batch-item img {
+            width: 76px; height: 76px;
+            object-fit: cover; border-radius: 8px;
+        }
+        .batch-item input {
+            width: 100%; padding: 4px 6px;
+            border: 1px solid #ddd; border-radius: 6px;
+            font-size: 0.76rem; text-align: center; outline: none;
+        }
+        .batch-item input:focus { border-color: var(--primary); }
+        .batch-remove {
+            position: absolute; top: 4px; right: 4px;
+            background: rgba(229,57,53,0.12); border: none;
+            color: #e53935; border-radius: 50%;
+            width: 20px; height: 20px; font-size: 0.65rem;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .batch-remove:hover { background: rgba(229,57,53,0.25); }
+        .batch-count { font-size: 0.84rem; color: #888; margin: 6px 0 0; text-align: center; min-height: 18px; }
+
+        /* ── Share Modal ── */
+        .share-section-title { font-weight: 700; margin-bottom: 8px; color: #555; font-size: 0.95rem; }
+        .share-section-desc  { font-size: 0.86rem; color: #888; margin-bottom: 12px; line-height: 1.5; }
+        .share-divider { border: none; border-top: 1px solid #eee; margin: 20px 0; }
+        .import-info { font-size: 0.85rem; margin-top: 10px; text-align: center; min-height: 20px; }
+        .import-actions { display: none; gap: 10px; margin-top: 12px; }
+
+        body.dark .share-section-title { color: #bbb; }
+        body.dark .share-section-desc  { color: #666; }
+        body.dark .share-divider       { border-top-color: #2a2c36; }
+        body.dark .import-info         { color: #aaa; }
+
+        /* ── Dark Mode Toggle Button ── */
+        .dark-toggle {
+            background: none; border: 2px solid #ddd;
+            border-radius: 50%; width: 38px; height: 38px;
+            font-size: 1.1rem; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: background 0.2s, border-color 0.2s;
+        }
+        .dark-toggle:hover { background: #f0f0f0; }
+
+        /* ── Dark Mode ── */
+        body.dark { background: #111318; color-scheme: dark; }
+
+        body.dark header { background: #1c1e26; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+        body.dark .logo { color: #6aadee; }
+        body.dark .logo span { color: #ccc; }
+        body.dark .dark-toggle { border-color: #444; }
+        body.dark .dark-toggle:hover { background: #2a2a2a; }
+        body.dark .mode-toggle { background: #2a2c36; }
+        body.dark .mode-btn { color: #aaa; }
+
+        body.dark.child-mode header { background: #2a1800; }
+        body.dark.child-mode .logo { color: #ff9800; }
+
+        body.dark .child-banner { background: linear-gradient(90deg, #c96700, #e09000); }
+
+        body.dark .search-bar { background: #1c1e26; border-top-color: #2a2c36; }
+        body.dark .search-input { background: #252830; border-color: #3a3c48; color: #e0e0e0; }
+        body.dark .search-input::placeholder { color: #555; }
+
+        body.dark .categories { background: #1c1e26; border-bottom-color: #2a2c36; }
+        body.dark .cat-btn { background: #252830; color: #aaa; }
+
+        body.dark .subcategories { background: #162022; border-bottom-color: #1e3035; }
+        body.dark .subcat-btn { background: rgba(255,255,255,0.06); color: #4dd0e1; }
+        body.dark .subcat-btn:hover:not(.active) { background: rgba(255,255,255,0.12); }
+
+        body.dark .category-title { color: #bbb; }
+        body.dark .card { background: #1e2029; box-shadow: 0 4px 16px rgba(0,0,0,0.45); }
+        body.dark .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
+        body.dark .card-label { color: #ddd; }
+        body.dark .card-label-ar { color: #888; }
+        body.dark .dual-sep { color: #555; }
+        body.dark .card.add-card { background: #192033; border-color: #5b9bd5; }
+        body.dark .add-card-icon { color: #6aadee; }
+        body.dark .add-card-label { color: #6aadee; }
+        body.dark .empty-state { color: #555; }
+
+        body.dark .modal { background: #1c1e26; }
+        body.dark .modal h2 { color: #e0e0e0; }
+        body.dark .form-group label { color: #bbb; }
+        body.dark .form-group input,
+        body.dark .form-group select { background: #252830; border-color: #3a3c48; color: #e0e0e0; }
+        body.dark .form-group select option { background: #252830; }
+        body.dark .upload-area { border-color: #3a3c48; color: #bbb; }
+        body.dark .upload-area:hover { background: #192033; border-color: #6aadee; }
+        body.dark .btn-secondary { background: #2a2c36; color: #ccc; }
+
+        body.dark .batch-item { background: #252830; }
+        body.dark .batch-item input { background: #1c1e26; border-color: #3a3c48; color: #e0e0e0; }
+        body.dark .batch-count { color: #666; }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            .card-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+        }
+        @media (min-width: 768px) {
+            .card-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+        }
+        @media (min-width: 1200px) {
+            .grid-container { max-width: 1280px; margin: 0 auto; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">Talk<span>Board</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+        <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="teacher" onclick="setMode('teacher')">👩‍🏫 Teacher</button>
+            <button class="mode-btn"        data-mode="child"   onclick="setMode('child')">🧒 I want to say</button>
+        </div>
+        <button class="dark-toggle" id="darkToggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+    </div>
+</header>
+
+<div class="child-banner">Tap a picture to tell us how you feel or what you need! 🌟</div>
+
+<div class="search-bar">
+    <input class="search-input" type="text" id="searchInput"
+           placeholder="🔍 Search cards..." oninput="renderCards()">
+</div>
+
+<div class="categories" id="categoryTabs"></div>
+<div class="subcategories" id="subCategoryTabs"></div>
+
+<div class="grid-container">
+    <div class="category-title" id="categoryTitle"></div>
+    <div class="card-grid" id="cardGrid"></div>
+</div>
+
+<!-- ── Fullscreen Display ── -->
+<div class="fullscreen" id="fullscreen" onclick="closeFullscreen()">
+    <div id="fsContent"></div>
+    <div class="fs-label" id="fsLabel"></div>
+    <div class="fs-label-ar" id="fsLabelAr"></div>
+    <button class="fs-speak-btn" onclick="event.stopPropagation(); speak(currentCard.label)">
+        🔊 Say it out loud
+    </button>
+    <div class="fs-hint">Tap anywhere to go back</div>
+</div>
+
+<!-- ── Add Card Modal ── -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+        <h2>➕ Add New Card</h2>
+
+        <div class="form-group">
+            <label>Card Label *</label>
+            <input type="text" id="newLabel" placeholder="e.g. Lunch Time" maxlength="30">
+        </div>
+
+        <div class="form-group">
+            <label>Emoji (optional — used if no image uploaded)</label>
+            <input type="text" id="newEmoji" placeholder="e.g. 🍕" maxlength="4">
+        </div>
+
+        <div class="form-group">
+            <label>Upload an Image (optional)</label>
+            <div class="upload-area" onclick="document.getElementById('imgUpload').click()">
+                <div>📁 Click to choose a photo</div>
+                <div style="font-size:0.82rem;color:#aaa;margin-top:4px">JPG, PNG, GIF, WebP</div>
+                <input type="file" id="imgUpload" accept="image/*" onchange="previewImage(event)">
+                <img id="imgPreview" class="preview-img" style="display:none" alt="preview">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Category</label>
+            <select id="newCategory"></select>
+        </div>
+
+        <div class="modal-btns">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary"   onclick="addCard()">Add Card</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Share Modal ── -->
+<div class="modal-overlay" id="shareModalOverlay" onclick="handleShareOverlayClick(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:420px">
+        <h2>📤 Share Cards</h2>
+
+        <div>
+            <div class="share-section-title">Send to others</div>
+            <div class="share-section-desc">Export all your custom cards as a file. Send it via WhatsApp, email, or USB — anyone with TalkBoard can load it instantly.</div>
+            <button class="btn btn-primary" style="width:100%" onclick="exportCards()">⬇️ Download Cards File</button>
+        </div>
+
+        <hr class="share-divider">
+
+        <div>
+            <div class="share-section-title">Receive from others</div>
+            <div class="share-section-desc">Open a cards file that someone shared with you.</div>
+            <div class="upload-area" onclick="document.getElementById('importFile').click()">
+                <div>📁 Click to choose a cards file</div>
+                <div style="font-size:0.82rem;color:#aaa;margin-top:4px">.json file exported from TalkBoard</div>
+                <input type="file" id="importFile" accept=".json,application/json" onchange="handleImportFile(event)">
+            </div>
+            <div class="import-info" id="importFileInfo"></div>
+            <div class="import-actions" id="importActions">
+                <button class="btn btn-secondary" onclick="importCards('merge')">➕ Add to my cards</button>
+                <button class="btn btn-primary"   onclick="importCards('replace')">🔄 Replace my cards</button>
+            </div>
+        </div>
+
+        <div class="modal-btns" style="margin-top:20px">
+            <button class="btn btn-secondary" onclick="closeShareModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Batch Import Modal ── -->
+<div class="modal-overlay" id="batchModalOverlay" onclick="handleBatchOverlayClick(event)">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:580px">
+        <h2>📥 Batch Import Photos</h2>
+
+        <div class="form-group">
+            <label>Category — all photos will go here</label>
+            <select id="batchCategory"></select>
+        </div>
+
+        <div class="upload-area" onclick="document.getElementById('batchFiles').click()">
+            <div>📁 Click to choose multiple photos</div>
+            <div style="font-size:0.82rem;color:#aaa;margin-top:4px">Hold Ctrl / Shift to select many at once · JPG, PNG, WebP</div>
+            <input type="file" id="batchFiles" accept="image/*" multiple onchange="handleBatchFiles(event)">
+        </div>
+
+        <div class="batch-count" id="batchCount"></div>
+        <div class="batch-grid" id="batchGrid"></div>
+
+        <div class="modal-btns" style="margin-top:14px">
+            <button class="btn btn-secondary" onclick="closeBatchModal()">Cancel</button>
+            <button class="btn btn-primary"   id="batchImportBtn" onclick="batchImportAll()">📥 Import Cards</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════
+// DATA
+// ═══════════════════════════════════
+const CATEGORIES = [
+    { id: 'emotions', label: 'Emotions',        icon: '😊', color: '#FFB300', bg: '#FFF8E1' },
+    { id: 'needs',    label: 'Needs',           icon: '🙋', color: '#4CAF50', bg: '#E8F5E9' },
+    { id: 'routine',  label: 'Daily Routine',   icon: '🌅', color: '#2196F3', bg: '#E3F2FD' },
+    { id: 'actions',  label: 'Actions',         icon: '🏃', color: '#9C27B0', bg: '#F3E5F5' },
+    { id: 'social',   label: 'Social',          icon: '❤️', color: '#E91E63', bg: '#FCE4EC' },
+    { id: 'visuals',  label: 'Visuals Library', icon: '🖼️', color: '#00BCD4', bg: '#E0F7FA', hasSubCats: true },
+    { id: 'custom',   label: 'My Cards',        icon: '⭐', color: '#FF5722', bg: '#FBE9E7' },
+];
+
+const SUB_CATEGORIES = {
+    visuals: [
+        { id: 'v-express',   label: 'Expressions',         icon: '😊', color: '#FF7043', bg: '#FBE9E7', parent: 'visuals' },
+        { id: 'v-opposites', label: 'Opposites',           icon: '↔️', color: '#7E57C2', bg: '#EDE7F6', parent: 'visuals' },
+        { id: 'v-classroom', label: 'Classroom',           icon: '📋', color: '#26A69A', bg: '#E0F2F1', parent: 'visuals' },
+        { id: 'v-daily',     label: 'Daily Life',          icon: '🌞', color: '#FFA726', bg: '#FFF3E0', parent: 'visuals' },
+        { id: 'v-physical',  label: 'Physical Activities', icon: '🏃', color: '#66BB6A', bg: '#E8F5E9', parent: 'visuals' },
+    ]
+};
+
+const BUILT_IN = [
+    // Emotions
+    { id:'e1',  cat:'emotions', emoji:'😊', label:'Happy' },
+    { id:'e2',  cat:'emotions', emoji:'😢', label:'Sad' },
+    { id:'e3',  cat:'emotions', emoji:'😠', label:'Angry' },
+    { id:'e4',  cat:'emotions', emoji:'😨', label:'Scared' },
+    { id:'e5',  cat:'emotions', emoji:'😴', label:'Tired' },
+    { id:'e6',  cat:'emotions', emoji:'🤩', label:'Excited' },
+    { id:'e7',  cat:'emotions', emoji:'😕', label:'Confused' },
+    { id:'e8',  cat:'emotions', emoji:'🤕', label:'In Pain' },
+    { id:'e9',  cat:'emotions', emoji:'😒', label:'Bored' },
+    { id:'e10', cat:'emotions', emoji:'😰', label:'Worried' },
+    { id:'e11', cat:'emotions', emoji:'🥰', label:'Loved' },
+    { id:'e12', cat:'emotions', emoji:'😤', label:'Frustrated' },
+    // Needs
+    { id:'n1',  cat:'needs', emoji:'🍽️', label:'Hungry' },
+    { id:'n2',  cat:'needs', emoji:'💧', label:'Thirsty' },
+    { id:'n3',  cat:'needs', emoji:'🚽', label:'Bathroom' },
+    { id:'n4',  cat:'needs', emoji:'😴', label:'Need to Rest' },
+    { id:'n5',  cat:'needs', emoji:'🤝', label:'Need Help' },
+    { id:'n6',  cat:'needs', emoji:'✋', label:'Stop' },
+    { id:'n7',  cat:'needs', emoji:'✅', label:'Yes' },
+    { id:'n8',  cat:'needs', emoji:'❌', label:'No' },
+    { id:'n9',  cat:'needs', emoji:'➕', label:'More' },
+    { id:'n10', cat:'needs', emoji:'🏁', label:'All Done' },
+    { id:'n11', cat:'needs', emoji:'🤒', label:'Feeling Sick' },
+    { id:'n12', cat:'needs', emoji:'🌡️', label:'Too Hot' },
+    // Daily Routine
+    { id:'r1',  cat:'routine', emoji:'🌅', label:'Wake Up' },
+    { id:'r2',  cat:'routine', emoji:'🍳', label:'Breakfast' },
+    { id:'r3',  cat:'routine', emoji:'🏫', label:'School' },
+    { id:'r4',  cat:'routine', emoji:'🥗', label:'Lunch Time' },
+    { id:'r5',  cat:'routine', emoji:'🏠', label:'Go Home' },
+    { id:'r6',  cat:'routine', emoji:'🛁', label:'Bath Time' },
+    { id:'r7',  cat:'routine', emoji:'🌙', label:'Bedtime' },
+    { id:'r8',  cat:'routine', emoji:'🎮', label:'Play Time' },
+    { id:'r9',  cat:'routine', emoji:'📚', label:'Reading Time' },
+    { id:'r10', cat:'routine', emoji:'🎨', label:'Art Time' },
+    { id:'r11', cat:'routine', emoji:'🚌', label:'School Bus' },
+    { id:'r12', cat:'routine', emoji:'💊', label:'Medicine Time' },
+    // Actions
+    { id:'a1',  cat:'actions', emoji:'🪑', label:'Sit Down' },
+    { id:'a2',  cat:'actions', emoji:'🧍', label:'Stand Up' },
+    { id:'a3',  cat:'actions', emoji:'👐', label:'Come Here' },
+    { id:'a4',  cat:'actions', emoji:'⏳', label:'Wait' },
+    { id:'a5',  cat:'actions', emoji:'👂', label:'Listen' },
+    { id:'a6',  cat:'actions', emoji:'👀', label:'Look' },
+    { id:'a7',  cat:'actions', emoji:'✏️', label:'Write' },
+    { id:'a8',  cat:'actions', emoji:'📖', label:'Read' },
+    { id:'a9',  cat:'actions', emoji:'🚶', label:'Walk' },
+    { id:'a10', cat:'actions', emoji:'🤫', label:'Be Quiet' },
+    { id:'a11', cat:'actions', emoji:'🙌', label:'Hands Up' },
+    { id:'a12', cat:'actions', emoji:'👋', label:'Say Hello' },
+    // Social
+    { id:'f1',  cat:'social', emoji:'❤️',   label:'Love You' },
+    { id:'f2',  cat:'social', emoji:'🤗',   label:'Hug' },
+    { id:'f3',  cat:'social', emoji:'🙏',   label:'Please' },
+    { id:'f4',  cat:'social', emoji:'🙌',   label:'Thank You' },
+    { id:'f5',  cat:'social', emoji:'😔',   label:'Sorry' },
+    { id:'f6',  cat:'social', emoji:'👍',   label:'Good Job' },
+    { id:'f7',  cat:'social', emoji:'🎉',   label:'Celebrate' },
+    { id:'f8',  cat:'social', emoji:'👫',   label:'Friend' },
+    { id:'f9',  cat:'social', emoji:'👨‍👩‍👧', label:'Family' },
+    { id:'f10', cat:'social', emoji:'🤲',   label:'Share' },
+    // Visuals — Expressions
+    { id:'ve1',  cat:'v-express', emoji:'😊', label:'Happy' },
+    { id:'ve2',  cat:'v-express', emoji:'😢', label:'Sad' },
+    { id:'ve3',  cat:'v-express', emoji:'😠', label:'Angry' },
+    { id:'ve4',  cat:'v-express', emoji:'😟', label:'Worried' },
+    { id:'ve5',  cat:'v-express', emoji:'🤩', label:'Excited' },
+    { id:'ve6',  cat:'v-express', emoji:'😰', label:'Nervous' },
+    { id:'ve7',  cat:'v-express', emoji:'😕', label:'Confused' },
+    { id:'ve8',  cat:'v-express', emoji:'😑', label:'Bored' },
+    { id:'ve9',  cat:'v-express', emoji:'😤', label:'Proud' },
+    { id:'ve10', cat:'v-express', emoji:'😌', label:'Calm' },
+    { id:'ve11', cat:'v-express', emoji:'😒', label:'Jealous' },
+    { id:'ve12', cat:'v-express', emoji:'😲', label:'Surprised' },
+    { id:'ve13', cat:'v-express', emoji:'🥰', label:'Loved' },
+    { id:'ve14', cat:'v-express', emoji:'💪', label:'Brave' },
+    { id:'ve15', cat:'v-express', emoji:'😴', label:"I'm Tired" },
+    // Visuals — Opposites (bilingual)
+    { id:'vo1',  cat:'v-opposites', emoji:'☀️',  emoji2:'🌙',  label:'Day / Night',       labelAr:'نهار / ليل' },
+    { id:'vo2',  cat:'v-opposites', emoji:'💪',  emoji2:'🤲',  label:'Strong / Weak',     labelAr:'قوي / ضعيف' },
+    { id:'vo3',  cat:'v-opposites', emoji:'🏠',  emoji2:'🏔️', label:'Near / Far',        labelAr:'قريب / بعيد' },
+    { id:'vo4',  cat:'v-opposites', emoji:'🦒',  emoji2:'🐇',  label:'Tall / Short',      labelAr:'طويل / قصير' },
+    { id:'vo5',  cat:'v-opposites', emoji:'🤒',  emoji2:'😄',  label:'Sick / Healthy',    labelAr:'مريض / بصحة جيدة' },
+    { id:'vo6',  cat:'v-opposites', emoji:'😢',  emoji2:'😂',  label:'Cry / Laugh',       labelAr:'يبكي / يضحك' },
+    { id:'vo7',  cat:'v-opposites', emoji:'🏎️', emoji2:'🐢',  label:'Fast / Slow',       labelAr:'سريع / بطيء' },
+    { id:'vo8',  cat:'v-opposites', emoji:'🪨',  emoji2:'🪶',  label:'Heavy / Light',     labelAr:'ثقيل / خفيف' },
+    { id:'vo9',  cat:'v-opposites', emoji:'🧸',  emoji2:'🪨',  label:'Soft / Hard',       labelAr:'ناعم / صلب' },
+    { id:'vo10', cat:'v-opposites', emoji:'🍽️', emoji2:'🫙',  label:'Full / Empty',      labelAr:'ممتلئ / فارغ' },
+    { id:'vo11', cat:'v-opposites', emoji:'🔥',  emoji2:'❄️',  label:'Hot / Cold',        labelAr:'حار / بارد' },
+    { id:'vo12', cat:'v-opposites', emoji:'⬆️',  emoji2:'⬇️',  label:'Up / Down',         labelAr:'فوق / تحت' },
+    { id:'vo13', cat:'v-opposites', emoji:'🔒',  emoji2:'🔓',  label:'Closed / Open',     labelAr:'مغلق / مفتوح' },
+    { id:'vo14', cat:'v-opposites', emoji:'😊',  emoji2:'😢',  label:'Happy / Sad',       labelAr:'سعيد / حزين' },
+    { id:'vo15', cat:'v-opposites', emoji:'😴',  emoji2:'👁️',  label:'Asleep / Awake',    labelAr:'نائم / مستيقظ' },
+    { id:'vo16', cat:'v-opposites', emoji:'🌵',  emoji2:'💧',  label:'Dry / Wet',         labelAr:'جاف / مبلل' },
+    { id:'vo17', cat:'v-opposites', emoji:'🏠',  emoji2:'🌳',  label:'Inside / Outside',  labelAr:'داخل / خارج' },
+    { id:'vo18', cat:'v-opposites', emoji:'🐘',  emoji2:'🐭',  label:'Big / Small',       labelAr:'كبير / صغير' },
+    { id:'vo19', cat:'v-opposites', emoji:'🦨',  emoji2:'✨',  label:'Dirty / Clean',     labelAr:'وسخ / نظيف' },
+    { id:'vo20', cat:'v-opposites', emoji:'😊',  emoji2:'😡',  label:'Friendly / Bully',  labelAr:'ودود / متنمر' },
+    // Visuals — Classroom
+    { id:'vc1',  cat:'v-classroom', emoji:'🚶',   label:'Line Up' },
+    { id:'vc2',  cat:'v-classroom', emoji:'👂',   label:'Listen' },
+    { id:'vc3',  cat:'v-classroom', emoji:'🧍',   label:'Stand Up' },
+    { id:'vc4',  cat:'v-classroom', emoji:'🤫',   label:'Be Quiet' },
+    { id:'vc5',  cat:'v-classroom', emoji:'🪑',   label:'Sit Down' },
+    { id:'vc6',  cat:'v-classroom', emoji:'🛌',   label:'Lie Down' },
+    { id:'vc7',  cat:'v-classroom', emoji:'⏳',   label:'Wait' },
+    { id:'vc8',  cat:'v-classroom', emoji:'✋',   label:'Hands Down' },
+    { id:'vc9',  cat:'v-classroom', emoji:'🙋',   label:'Raise Your Hand' },
+    { id:'vc10', cat:'v-classroom', emoji:'👀',   label:'Eyes Looking' },
+    { id:'vc11', cat:'v-classroom', emoji:'👨‍🏫', label:'Listen to the Teacher' },
+    { id:'vc12', cat:'v-classroom', emoji:'💝',   label:'Be Kind' },
+    { id:'vc13', cat:'v-classroom', emoji:'🤝',   label:'Work Together' },
+    { id:'vc14', cat:'v-classroom', emoji:'🔄',   label:'Take Turns' },
+    { id:'vc15', cat:'v-classroom', emoji:'🤲',   label:'Share' },
+    { id:'vc16', cat:'v-classroom', emoji:'🧹',   label:'Clean Up' },
+    { id:'vc17', cat:'v-classroom', emoji:'🔇',   label:'Quiet' },
+    // Visuals — Daily Life
+    { id:'vd1',  cat:'v-daily', emoji:'👋',  label:'Goodbye' },
+    { id:'vd2',  cat:'v-daily', emoji:'📚',  label:'Study' },
+    { id:'vd3',  cat:'v-daily', emoji:'🚿',  label:'Have a Wash' },
+    { id:'vd4',  cat:'v-daily', emoji:'🧼',  label:'Wash My Face' },
+    { id:'vd5',  cat:'v-daily', emoji:'🍽️', label:'Have Dinner' },
+    { id:'vd6',  cat:'v-daily', emoji:'💆',  label:'Brush My Hair' },
+    { id:'vd7',  cat:'v-daily', emoji:'📝',  label:'Do Homework' },
+    { id:'vd8',  cat:'v-daily', emoji:'🏠',  label:'I Want to Go Home' },
+    { id:'vd9',  cat:'v-daily', emoji:'🚽',  label:'Toilet' },
+    { id:'vd10', cat:'v-daily', emoji:'🙋',  label:'I Need Help' },
+    { id:'vd11', cat:'v-daily', emoji:'🚶',  label:'Walk' },
+    { id:'vd12', cat:'v-daily', emoji:'📖',  label:'Read a Book' },
+    { id:'vd13', cat:'v-daily', emoji:'🔇',  label:'I Need Quiet' },
+    // Visuals — Physical Activities
+    { id:'vp1',  cat:'v-physical', emoji:'🏃', label:'Running' },
+    { id:'vp2',  cat:'v-physical', emoji:'🤸', label:'Jumping' },
+    { id:'vp3',  cat:'v-physical', emoji:'🏊', label:'Swimming' },
+    { id:'vp4',  cat:'v-physical', emoji:'💃', label:'Dancing' },
+    { id:'vp5',  cat:'v-physical', emoji:'🏈', label:'Throwing' },
+    { id:'vp6',  cat:'v-physical', emoji:'⚽', label:'Kicking' },
+    { id:'vp7',  cat:'v-physical', emoji:'🧗', label:'Climbing' },
+    { id:'vp8',  cat:'v-physical', emoji:'🧘', label:'Stretching' },
+    { id:'vp9',  cat:'v-physical', emoji:'🚴', label:'Cycling' },
+    { id:'vp10', cat:'v-physical', emoji:'🏀', label:'Bouncing' },
+    { id:'vp11', cat:'v-physical', emoji:'⚾', label:'Catching' },
+    { id:'vp12', cat:'v-physical', emoji:'🏋️', label:'Lifting' },
+    { id:'vp13', cat:'v-physical', emoji:'🛝',  label:'Sliding' },
+    { id:'vp14', cat:'v-physical', emoji:'🎾', label:'Hitting' },
+];
+
+// ═══════════════════════════════════
+// STATE
+// ═══════════════════════════════════
+let currentMode     = 'teacher';
+let activeCategory  = 'emotions';
+let activeParent    = null;
+let currentCard     = null;
+let uploadedImgData = null;
+let editingCardId   = null;
+let customCards     = [];
+
+try { customCards = JSON.parse(localStorage.getItem('talkboard_custom') || '[]'); } catch(e) {}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+function init() {
+    if (localStorage.getItem('talkboard_dark') === '1') {
+        document.body.classList.add('dark');
+        document.getElementById('darkToggle').textContent = '☀️';
+    }
+    renderCategoryTabs();
+    renderSubCategoryTabs();
+    renderCards();
+}
+
+function toggleDark() {
+    const isDark = document.body.classList.toggle('dark');
+    document.getElementById('darkToggle').textContent = isDark ? '☀️' : '🌙';
+    try { localStorage.setItem('talkboard_dark', isDark ? '1' : '0'); } catch(e) {}
+}
+
+function getCat(id) {
+    return CATEGORIES.find(c => c.id === id)
+        || Object.values(SUB_CATEGORIES).flat().find(c => c.id === id);
+}
+
+function allSubCats() {
+    return Object.values(SUB_CATEGORIES).flat();
+}
+
+// ═══════════════════════════════════
+// MODE
+// ═══════════════════════════════════
+function setMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.mode === mode));
+    document.body.classList.toggle('child-mode', mode === 'child');
+    renderCards();
+}
+
+// ═══════════════════════════════════
+// CATEGORY TABS
+// ═══════════════════════════════════
+function renderCategoryTabs() {
+    document.getElementById('categoryTabs').innerHTML = CATEGORIES.map(cat => {
+        const isActive = cat.hasSubCats
+            ? activeParent === cat.id
+            : cat.id === activeCategory && !activeParent;
+        return `
+            <button class="cat-btn ${isActive ? 'active' : ''}"
+                data-id="${cat.id}"
+                style="${isActive ? `background:${cat.color};border-color:${cat.color}` : ''}"
+                onclick="setCategory('${cat.id}')">
+                ${cat.icon} ${cat.label}
+            </button>
+        `;
+    }).join('');
+}
+
+function setCategory(id) {
+    const cat = getCat(id);
+    if (cat && cat.hasSubCats) {
+        activeParent = id;
+        activeCategory = SUB_CATEGORIES[id][0].id;
+    } else {
+        activeParent = null;
+        activeCategory = id;
+    }
+    document.getElementById('searchInput').value = '';
+    renderCategoryTabs();
+    renderSubCategoryTabs();
+    renderCards();
+}
+
+// ═══════════════════════════════════
+// SUB-CATEGORY TABS
+// ═══════════════════════════════════
+function renderSubCategoryTabs() {
+    const subBar = document.getElementById('subCategoryTabs');
+    if (!activeParent || !SUB_CATEGORIES[activeParent]) {
+        subBar.classList.remove('visible');
+        subBar.innerHTML = '';
+        return;
+    }
+    const subs = SUB_CATEGORIES[activeParent];
+    subBar.classList.add('visible');
+    subBar.innerHTML = subs.map(sub => `
+        <button class="subcat-btn ${sub.id === activeCategory ? 'active' : ''}"
+            data-id="${sub.id}"
+            style="${sub.id === activeCategory ? `background:${sub.color};border-color:${sub.color}` : ''}"
+            onclick="setSubCategory('${sub.id}')">
+            ${sub.icon} ${sub.label}
+        </button>
+    `).join('');
+}
+
+function setSubCategory(id) {
+    activeCategory = id;
+    document.getElementById('searchInput').value = '';
+    renderSubCategoryTabs();
+    renderCards();
+}
+
+// ═══════════════════════════════════
+// CARD GRID
+// ═══════════════════════════════════
+function allCards() { return [...BUILT_IN, ...customCards]; }
+
+function renderCards() {
+    const search = document.getElementById('searchInput').value.trim().toLowerCase();
+    const cat    = getCat(activeCategory);
+    const grid   = document.getElementById('cardGrid');
+    const title  = document.getElementById('categoryTitle');
+
+    let cards;
+    if (search) {
+        cards = allCards().filter(c => c.label.toLowerCase().includes(search));
+        title.textContent = `🔍 "${document.getElementById('searchInput').value}"`;
+    } else {
+        cards = allCards().filter(c => c.cat === activeCategory);
+        if (cat) title.textContent = `${cat.icon}  ${cat.label}`;
+    }
+
+    grid.innerHTML = '';
+    cards.forEach(card => grid.appendChild(makeCard(card)));
+
+    if (currentMode === 'teacher' && activeCategory === 'custom' && !search) {
+        const addEl = document.createElement('div');
+        addEl.className = 'card add-card';
+        addEl.innerHTML = `<div class="add-card-icon">➕</div><div class="add-card-label">Add Card</div>`;
+        addEl.onclick = openModal;
+        grid.appendChild(addEl);
+
+        const batchEl = document.createElement('div');
+        batchEl.className = 'card add-card';
+        batchEl.style.cssText = 'background:#f0fff4;border-color:#4CAF50';
+        batchEl.innerHTML = `<div class="add-card-icon" style="color:#4CAF50">📥</div><div class="add-card-label" style="color:#4CAF50">Batch Import</div>`;
+        batchEl.onclick = openBatchModal;
+        grid.appendChild(batchEl);
+
+        const shareEl = document.createElement('div');
+        shareEl.className = 'card add-card';
+        shareEl.style.cssText = 'background:#f3eeff;border-color:#9C27B0';
+        shareEl.innerHTML = `<div class="add-card-icon" style="color:#9C27B0">📤</div><div class="add-card-label" style="color:#9C27B0">Share Cards</div>`;
+        shareEl.onclick = openShareModal;
+        grid.appendChild(shareEl);
+    }
+
+    if (cards.length === 0) {
+        grid.innerHTML = `<div class="empty-state">
+            <div class="icon">🔍</div>
+            <div style="font-size:1rem;font-weight:600">No cards found</div>
+        </div>`;
+        if (currentMode === 'teacher' && activeCategory === 'custom') {
+            const addEl = document.createElement('div');
+            addEl.className = 'card add-card';
+            addEl.innerHTML = `<div class="add-card-icon">➕</div><div class="add-card-label">Add Card</div>`;
+            addEl.onclick = openModal;
+            grid.appendChild(addEl);
+
+            const batchEl = document.createElement('div');
+            batchEl.className = 'card add-card';
+            batchEl.style.cssText = 'background:#f0fff4;border-color:#4CAF50';
+            batchEl.innerHTML = `<div class="add-card-icon" style="color:#4CAF50">📥</div><div class="add-card-label" style="color:#4CAF50">Batch Import</div>`;
+            batchEl.onclick = openBatchModal;
+            grid.appendChild(batchEl);
+
+            const shareEl = document.createElement('div');
+            shareEl.className = 'card add-card';
+            shareEl.style.cssText = 'background:#f3eeff;border-color:#9C27B0';
+            shareEl.innerHTML = `<div class="add-card-icon" style="color:#9C27B0">📤</div><div class="add-card-label" style="color:#9C27B0">Share Cards</div>`;
+            shareEl.onclick = openShareModal;
+            grid.appendChild(shareEl);
+        }
+    }
+}
+
+function makeCard(card) {
+    const cat = getCat(card.cat);
+    const el  = document.createElement('div');
+    el.className = 'card';
+    if (cat) el.style.borderColor = cat.color + '50';
+
+    let media;
+    if (card.imageData) {
+        media = `<img class="card-img" src="${card.imageData}" alt="${card.label}">`;
+    } else if (card.emoji2) {
+        media = `<div class="card-emoji dual-emoji">
+            <span>${card.emoji}</span>
+            <span class="dual-sep">/</span>
+            <span>${card.emoji2}</span>
+        </div>`;
+    } else {
+        media = `<div class="card-emoji">${card.emoji || '🖼️'}</div>`;
+    }
+
+    const arLabel = card.labelAr ? `<div class="card-label-ar">${card.labelAr}</div>` : '';
+    const editBtn = (currentMode === 'teacher' && card.isCustom)
+        ? `<span class="edit-btn" title="Move / Edit" onclick="event.stopPropagation();editCard('${card.id}')">✏️</span>`
+        : '';
+    const delBtn  = (currentMode === 'teacher' && card.isCustom)
+        ? `<span class="delete-btn" title="Delete" onclick="event.stopPropagation();deleteCard('${card.id}')">✕</span>`
+        : '';
+
+    el.innerHTML = `${editBtn}${media}<div class="card-label">${card.label}</div>${arLabel}${delBtn}`;
+    el.addEventListener('click', () => openFullscreen(card));
+    return el;
+}
+
+// ═══════════════════════════════════
+// FULLSCREEN
+// ═══════════════════════════════════
+function openFullscreen(card) {
+    currentCard = card;
+    const cat   = getCat(card.cat);
+    const c1    = cat ? cat.color : '#4A90D9';
+    const c2    = cat ? shade(cat.color, -35) : '#2060a0';
+
+    const fsContent = document.getElementById('fsContent');
+    if (card.imageData) {
+        fsContent.innerHTML = `<img class="fs-img" src="${card.imageData}" alt="${card.label}">`;
+    } else if (card.emoji2) {
+        fsContent.innerHTML = `<div class="fs-dual">
+            <div class="fs-emoji">${card.emoji}</div>
+            <div class="fs-dual-sep">/</div>
+            <div class="fs-emoji">${card.emoji2}</div>
+        </div>`;
+    } else {
+        fsContent.innerHTML = `<div class="fs-emoji">${card.emoji || '🖼️'}</div>`;
+    }
+
+    document.getElementById('fsLabel').textContent = card.label;
+    const fsLabelAr = document.getElementById('fsLabelAr');
+    fsLabelAr.textContent = card.labelAr || '';
+    fsLabelAr.style.display = card.labelAr ? 'block' : 'none';
+
+    const fs = document.getElementById('fullscreen');
+    fs.style.background = `linear-gradient(145deg, ${c1}, ${c2})`;
+    fs.classList.add('visible');
+}
+
+function closeFullscreen() {
+    document.getElementById('fullscreen').classList.remove('visible');
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeFullscreen(); });
+
+// ═══════════════════════════════════
+// TEXT-TO-SPEECH
+// ═══════════════════════════════════
+function speak(text) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate  = 0.82;
+    u.pitch = 1.1;
+    window.speechSynthesis.speak(u);
+}
+
+// ═══════════════════════════════════
+// ADD CARD MODAL
+// ═══════════════════════════════════
+function openModal() {
+    editingCardId = null;
+    document.querySelector('.modal h2').textContent = '➕ Add New Card';
+
+    const allCatsForModal = [
+        ...CATEGORIES.filter(c => !c.hasSubCats),
+        ...allSubCats(),
+    ];
+    const sel = document.getElementById('newCategory');
+    sel.innerHTML = allCatsForModal.map(c =>
+        `<option value="${c.id}" ${c.id === activeCategory ? 'selected' : ''}>${c.icon} ${c.label}</option>`
+    ).join('');
+
+    uploadedImgData = null;
+    document.getElementById('newLabel').value = '';
+    document.getElementById('newLabel').classList.remove('input-error');
+    document.getElementById('newEmoji').value = '';
+    document.getElementById('imgPreview').style.display = 'none';
+    document.getElementById('imgPreview').src = '';
+    document.getElementById('imgUpload').value = '';
+    document.getElementById('modalOverlay').classList.add('visible');
+}
+
+function editCard(id) {
+    const card = customCards.find(c => c.id === id);
+    if (!card) return;
+    editingCardId = id;
+
+    document.querySelector('.modal h2').textContent = '✏️ Move / Edit Card';
+
+    const allCatsForModal = [
+        ...CATEGORIES.filter(c => !c.hasSubCats),
+        ...allSubCats(),
+    ];
+    const sel = document.getElementById('newCategory');
+    sel.innerHTML = allCatsForModal.map(c =>
+        `<option value="${c.id}" ${c.id === card.cat ? 'selected' : ''}>${c.icon} ${c.label}</option>`
+    ).join('');
+
+    document.getElementById('newLabel').value = card.label;
+    document.getElementById('newLabel').classList.remove('input-error');
+    document.getElementById('newEmoji').value = (card.emoji && card.emoji !== '🖼️') ? card.emoji : '';
+
+    uploadedImgData = card.imageData || null;
+    const prev = document.getElementById('imgPreview');
+    if (card.imageData) {
+        prev.src = card.imageData;
+        prev.style.display = 'block';
+    } else {
+        prev.style.display = 'none';
+        prev.src = '';
+    }
+    document.getElementById('imgUpload').value = '';
+    document.getElementById('modalOverlay').classList.add('visible');
+}
+
+function closeModal() {
+    editingCardId = null;
+    document.getElementById('modalOverlay').classList.remove('visible');
+}
+
+function handleOverlayClick(e) {
+    if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function previewImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+        uploadedImgData = await compressImage(ev.target.result, 400, 0.78);
+        const prev = document.getElementById('imgPreview');
+        prev.src = uploadedImgData;
+        prev.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+}
+
+function addCard() {
+    const labelEl = document.getElementById('newLabel');
+    const label   = labelEl.value.trim();
+    if (!label) {
+        labelEl.classList.add('input-error');
+        labelEl.focus();
+        return;
+    }
+    labelEl.classList.remove('input-error');
+
+    const emoji = document.getElementById('newEmoji').value.trim();
+    const catId = document.getElementById('newCategory').value;
+
+    if (editingCardId) {
+        const idx = customCards.findIndex(c => c.id === editingCardId);
+        if (idx !== -1) {
+            customCards[idx] = {
+                ...customCards[idx],
+                label,
+                cat:       catId,
+                emoji:     emoji || customCards[idx].emoji,
+                imageData: uploadedImgData,
+            };
+        }
+    } else {
+        customCards.push({
+            id:        'c_' + Date.now(),
+            cat:       catId,
+            label,
+            emoji:     emoji || '🖼️',
+            imageData: uploadedImgData || null,
+            isCustom:  true,
+        });
+    }
+
+    saveCards();
+    closeModal();
+
+    const inSub = allSubCats().find(c => c.id === catId);
+    if (inSub) {
+        activeParent   = inSub.parent;
+        activeCategory = catId;
+        renderCategoryTabs();
+        renderSubCategoryTabs();
+        renderCards();
+    } else {
+        setCategory(catId);
+    }
+}
+
+function deleteCard(id) {
+    if (!confirm('Delete this card?')) return;
+    customCards = customCards.filter(c => c.id !== id);
+    saveCards();
+    renderCards();
+}
+
+// ═══════════════════════════════════
+// BATCH IMPORT
+// ═══════════════════════════════════
+let batchItems = [];
+
+function openBatchModal() {
+    batchItems = [];
+    document.getElementById('batchGrid').innerHTML = '';
+    document.getElementById('batchCount').textContent = '';
+    document.getElementById('batchFiles').value = '';
+    document.getElementById('batchImportBtn').textContent = '📥 Import Cards';
+
+    const allCatsForModal = [
+        ...CATEGORIES.filter(c => !c.hasSubCats),
+        ...allSubCats(),
+    ];
+    const sel = document.getElementById('batchCategory');
+    sel.innerHTML = allCatsForModal.map(c =>
+        `<option value="${c.id}" ${c.id === activeCategory ? 'selected' : ''}>${c.icon} ${c.label}</option>`
+    ).join('');
+
+    document.getElementById('batchModalOverlay').classList.add('visible');
+}
+
+function closeBatchModal() {
+    document.getElementById('batchModalOverlay').classList.remove('visible');
+    batchItems = [];
+}
+
+function handleBatchOverlayClick(e) {
+    if (e.target === document.getElementById('batchModalOverlay')) closeBatchModal();
+}
+
+function filenameToLabel(filename) {
+    return filename
+        .replace(/\.[^.]+$/, '')
+        .replace(/[-_]/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase())
+        .trim()
+        .slice(0, 30);
+}
+
+function handleBatchFiles(event) {
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
+    batchItems = [];
+    document.getElementById('batchCount').textContent = `Processing ${files.length} photo${files.length !== 1 ? 's' : ''}…`;
+    document.getElementById('batchGrid').innerHTML = '';
+    let loaded = 0;
+    files.forEach((file, i) => {
+        const id = 'b' + i;
+        const reader = new FileReader();
+        reader.onload = async ev => {
+            const compressed = await compressImage(ev.target.result, 400, 0.78);
+            batchItems.push({ id, imageData: compressed, label: filenameToLabel(file.name) });
+            loaded++;
+            if (loaded === files.length) renderBatchGrid();
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderBatchGrid() {
+    const n = batchItems.length;
+    document.getElementById('batchCount').textContent = `${n} photo${n !== 1 ? 's' : ''} selected — edit any label before importing`;
+    document.getElementById('batchImportBtn').textContent = `📥 Import ${n} Card${n !== 1 ? 's' : ''}`;
+    document.getElementById('batchGrid').innerHTML = batchItems.map(item => `
+        <div class="batch-item" id="bi_${item.id}">
+            <button class="batch-remove" onclick="removeBatchItem('${item.id}')" title="Remove">✕</button>
+            <img src="${item.imageData}" alt="${item.label}">
+            <input type="text" value="${escHtml(item.label)}" maxlength="30"
+                oninput="updateBatchLabel('${item.id}', this.value)">
+        </div>
+    `).join('');
+}
+
+function removeBatchItem(id) {
+    batchItems = batchItems.filter(i => i.id !== id);
+    renderBatchGrid();
+}
+
+function updateBatchLabel(id, value) {
+    const item = batchItems.find(i => i.id === id);
+    if (item) item.label = value;
+}
+
+function batchImportAll() {
+    if (!batchItems.length) return;
+    const catId = document.getElementById('batchCategory').value;
+    const now   = Date.now();
+    batchItems.forEach((item, idx) => {
+        customCards.push({
+            id:        'c_' + (now + idx),
+            cat:       catId,
+            label:     item.label.trim() || 'Card',
+            emoji:     '🖼️',
+            imageData: item.imageData,
+            isCustom:  true,
+        });
+    });
+    if (!saveCards()) return;
+    closeBatchModal();
+    const inSub = allSubCats().find(c => c.id === catId);
+    if (inSub) {
+        activeParent   = inSub.parent;
+        activeCategory = catId;
+        renderCategoryTabs();
+        renderSubCategoryTabs();
+        renderCards();
+    } else {
+        setCategory(catId);
+    }
+}
+
+function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════
+// SHARE — EXPORT / IMPORT
+// ═══════════════════════════════════
+let pendingImport = null;
+
+function openShareModal() {
+    pendingImport = null;
+    document.getElementById('importFileInfo').textContent = '';
+    document.getElementById('importFile').value = '';
+    document.getElementById('importActions').style.display = 'none';
+    document.getElementById('shareModalOverlay').classList.add('visible');
+}
+
+function closeShareModal() {
+    document.getElementById('shareModalOverlay').classList.remove('visible');
+    pendingImport = null;
+}
+
+function handleShareOverlayClick(e) {
+    if (e.target === document.getElementById('shareModalOverlay')) closeShareModal();
+}
+
+function exportCards() {
+    if (!customCards.length) {
+        alert('No custom cards to export yet.\nAdd some cards first, then share!');
+        return;
+    }
+    const blob = new Blob([JSON.stringify(customCards, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'talkboard-cards.json';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function handleImportFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const info = document.getElementById('importFileInfo');
+    const reader = new FileReader();
+    reader.onload = ev => {
+        try {
+            const data = JSON.parse(ev.target.result);
+            if (!Array.isArray(data) || !data.length || !data[0].label) throw new Error();
+            pendingImport = data;
+            info.textContent = `✅ ${data.length} card${data.length !== 1 ? 's' : ''} found — choose how to import below`;
+            info.style.color = '#4CAF50';
+            document.getElementById('importActions').style.display = 'flex';
+        } catch(e) {
+            info.textContent = '❌ Invalid file — please use a .json file exported from TalkBoard';
+            info.style.color = '#e53935';
+            document.getElementById('importActions').style.display = 'none';
+            pendingImport = null;
+        }
+    };
+    reader.readAsText(file);
+}
+
+function importCards(mode) {
+    if (!pendingImport) return;
+    if (mode === 'replace') {
+        if (!confirm(`This will replace all ${customCards.length} of your current cards with the ${pendingImport.length} imported cards. Continue?`)) return;
+        customCards = pendingImport.map(c => ({ ...c, isCustom: true }));
+    } else {
+        const existingIds = new Set(customCards.map(c => c.id));
+        const fresh = pendingImport
+            .filter(c => !existingIds.has(c.id))
+            .map(c => ({ ...c, isCustom: true }));
+        customCards = [...customCards, ...fresh];
+        const skipped = pendingImport.length - fresh.length;
+        if (skipped) alert(`${fresh.length} cards added. ${skipped} skipped (already existed).`);
+    }
+    if (!saveCards()) return;
+    closeShareModal();
+    setCategory('custom');
+}
+
+// ═══════════════════════════════════
+// UTILS
+// ═══════════════════════════════════
+function compressImage(dataUrl, maxDim, quality) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+                if (w >= h) { h = Math.round(h * maxDim / w); w = maxDim; }
+                else        { w = Math.round(w * maxDim / h); h = maxDim; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+    });
+}
+
+function saveCards() {
+    try {
+        localStorage.setItem('talkboard_custom', JSON.stringify(customCards));
+        return true;
+    } catch(e) {
+        alert('⚠️ Could not save cards — storage is full.\n\nTry deleting some cards you no longer need, then import again.');
+        return false;
+    }
+}
+
+function shade(hex, pct) {
+    const n = parseInt(hex.replace('#',''), 16), a = Math.round(2.55 * pct);
+    const clamp = v => Math.min(255, Math.max(0, v));
+    const r = clamp((n >> 16) + a), g = clamp(((n >> 8) & 0xff) + a), b = clamp((n & 0xff) + a);
+    return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}
+
+init();
+</script>
+</body>
+</html>
