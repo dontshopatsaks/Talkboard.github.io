@@ -512,6 +512,15 @@
             </div>
         </div>
 
+        <hr class="share-divider">
+
+        <div>
+            <div class="share-section-title">🔧 Fix images</div>
+            <div class="share-section-desc">If your cards have large locally-saved images, click below to re-upload them to Cloudinary and replace them with shareable URLs.</div>
+            <button class="btn" style="width:100%;background:#fff3e0;color:#e65100;border:2px solid #ffb74d" onclick="reuploadLocalImages()">☁️ Re-upload local images to cloud</button>
+            <div id="reuploadStatus" style="font-size:0.84rem;margin-top:8px;text-align:center;min-height:18px"></div>
+        </div>
+
         <div class="modal-btns" style="margin-top:20px">
             <button class="btn btn-secondary" onclick="closeShareModal()">Close</button>
         </div>
@@ -1351,6 +1360,38 @@ function closeShareModal() {
 
 function handleShareOverlayClick(e) {
     if (e.target === document.getElementById('shareModalOverlay')) closeShareModal();
+}
+
+async function reuploadLocalImages() {
+    const statusEl = document.getElementById('reuploadStatus');
+    const local = customCards.filter(c => c.imageData && c.imageData.startsWith('data:'));
+    if (!local.length) {
+        statusEl.style.color = '#4CAF50';
+        statusEl.textContent = '✅ No local images found — all good!';
+        return;
+    }
+    statusEl.style.color = '#888';
+    statusEl.textContent = `⏳ Uploading 0 / ${local.length}…`;
+    let done = 0, failed = 0;
+    for (const card of local) {
+        try {
+            const fname = Date.now() + '_card.jpg';
+            const url = await uploadToStorage(card.imageData, fname);
+            card.imageData = url;
+            done++;
+        } catch(e) {
+            failed++;
+        }
+        statusEl.textContent = `⏳ Uploading ${done + failed} / ${local.length}…`;
+    }
+    await saveCards();
+    if (failed === 0) {
+        statusEl.style.color = '#4CAF50';
+        statusEl.textContent = `✅ Done! ${done} image${done !== 1 ? 's' : ''} moved to cloud.`;
+    } else {
+        statusEl.style.color = '#FF9800';
+        statusEl.textContent = `⚠️ ${done} uploaded, ${failed} failed — check Cloudinary settings.`;
+    }
 }
 
 function exportCards() {
