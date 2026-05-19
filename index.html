@@ -1461,14 +1461,10 @@ function compressImage(dataUrl, maxDim, quality) {
 async function saveCards() {
     try { localStorage.setItem('talkboard_custom', JSON.stringify(customCards)); } catch(e) {}
     if (!JSONBIN_CONFIG.apiKey || !JSONBIN_CONFIG.binId) return true;
-    // Strip base64 images before sending to JSONBin — only Cloudinary URLs go to the cloud
-    const forCloud = customCards.map(c => {
-        if (c.imageData && c.imageData.startsWith('data:')) {
-            const { imageData, ...rest } = c;
-            return rest;
-        }
-        return c;
-    });
+    // Only sync cards with Cloudinary URLs — cards with local (base64) images stay on this device only
+    const forCloud = customCards.filter(c =>
+        !c.imageData || !c.imageData.startsWith('data:')
+    );
     try {
         const res = await fetch(
             `https://api.jsonbin.io/v3/b/${JSONBIN_CONFIG.binId}`,
