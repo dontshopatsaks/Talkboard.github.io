@@ -490,9 +490,18 @@
         <h2>📤 Share Cards</h2>
 
         <div>
+            <div class="share-section-title">Publish to everyone</div>
+            <div class="share-section-desc">Push your cards to the shared cloud so all devices see them. Only cards with cloud-uploaded images are published — local-image cards stay private.</div>
+            <button class="btn btn-primary" style="width:100%" onclick="handlePublish()">🌐 Publish my cards</button>
+            <div id="publishStatus" style="font-size:0.84rem;margin-top:8px;text-align:center;min-height:18px"></div>
+        </div>
+
+        <hr class="share-divider">
+
+        <div>
             <div class="share-section-title">Send to others</div>
             <div class="share-section-desc">Export all your custom cards as a file. Send it via WhatsApp, email, or USB — anyone with TalkBoard can load it instantly.</div>
-            <button class="btn btn-primary" style="width:100%" onclick="exportCards()">⬇️ Download Cards File</button>
+            <button class="btn btn-primary" style="width:100%;background:#555" onclick="exportCards()">⬇️ Download Cards File</button>
         </div>
 
         <hr class="share-divider">
@@ -603,13 +612,10 @@ async function loadCards() {
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
         const cloudCards = Array.isArray(data.record) ? data.record : [];
-        if (cloudCards.length === 0 && customCards.length > 0) {
-            // First-time migration: push existing local cards up to JSONBin
-            await saveCards();
-        } else {
-            customCards = cloudCards;
-            renderCards();
-        }
+        const cloudIds = new Set(cloudCards.map(c => c.id));
+        const localOnly = customCards.filter(c => !cloudIds.has(c.id));
+        customCards = [...cloudCards, ...localOnly];
+        renderCards();
     } catch(e) {
         console.error('JSONBin load failed:', e);
     }
@@ -1336,6 +1342,7 @@ function openShareModal() {
     document.getElementById('importFileInfo').textContent = '';
     document.getElementById('importFile').value = '';
     document.getElementById('importActions').style.display = 'none';
+    document.getElementById('publishStatus').textContent = '';
     document.getElementById('shareModalOverlay').classList.add('visible');
 }
 
@@ -1346,6 +1353,20 @@ function closeShareModal() {
 
 function handleShareOverlayClick(e) {
     if (e.target === document.getElementById('shareModalOverlay')) closeShareModal();
+}
+
+async function handlePublish() {
+    const statusEl = document.getElementById('publishStatus');
+    statusEl.style.color = '#888';
+    statusEl.textContent = '⏳ Publishing…';
+    const ok = await publishCards();
+    if (ok) {
+        statusEl.style.color = '#4CAF50';
+        statusEl.textContent = '✅ Published! Everyone will see your cards on refresh.';
+    } else {
+        statusEl.style.color = '#e53935';
+        statusEl.textContent = '❌ Publish failed — check your internet connection.';
+    }
 }
 
 async function reuploadLocalImages() {
@@ -1459,9 +1480,17 @@ function compressImage(dataUrl, maxDim, quality) {
 }
 
 async function saveCards() {
-    try { localStorage.setItem('talkboard_custom', JSON.stringify(customCards)); } catch(e) {}
-    if (!JSONBIN_CONFIG.apiKey || !JSONBIN_CONFIG.binId) return true;
-    // Only sync cards with Cloudinary URLs — cards with local (base64) images stay on this device only
+    try {
+        localStorage.setItem('talkboard_custom', JSON.stringify(customCards));
+        return true;
+    } catch(e) {
+        alert('⚠️ Could not save cards — storage is full.');
+        return false;
+    }
+}
+
+async function publishCards() {
+    if (!JSONBIN_CONFIG.apiKey || !JSONBIN_CONFIG.binId) return false;
     const forCloud = customCards.filter(c =>
         !c.imageData || !c.imageData.startsWith('data:')
     );
@@ -1480,8 +1509,7 @@ async function saveCards() {
         if (!res.ok) throw new Error(res.status);
         return true;
     } catch(e) {
-        console.error('JSONBin save failed:', e);
-        alert('⚠️ Could not save cards to cloud. Check your internet connection.');
+        console.error('JSONBin publish failed:', e);
         return false;
     }
 }
