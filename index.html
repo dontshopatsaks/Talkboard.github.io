@@ -1208,8 +1208,12 @@ async function addCard() {
 
 async function deleteCard(id) {
     if (!confirm('Delete this card?')) return;
+    const card = customCards.find(c => c.id === id);
     customCards = customCards.filter(c => c.id !== id);
     await saveCards();
+    if (card && (!card.imageData || !card.imageData.startsWith('data:'))) {
+        await publishCards();
+    }
     renderCards();
 }
 
